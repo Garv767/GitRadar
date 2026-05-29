@@ -1,0 +1,20 @@
+[build]
+  # Tell Netlify to serve your static frontend files
+  publish = "public"
+  # Command to run before deploying
+  command = "npm install"
+  # Where your Express backend now lives
+  functions = "functions"
+
+# Route all /api/* requests to your Express serverless function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# Fallback: Route all other traffic to your frontend SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
