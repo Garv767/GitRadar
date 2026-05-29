@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RepoRadar - Premium GitHub Profile Analyzer</title>
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Background Decorative Dials -->
+  <div class="blob blob-purple"></div>
+  <div class="blob blob-cyan"></div>
+
+  <div class="app-container">
+    <!-- Header Section -->
+    <header class="app-header">
+      <div class="logo">
+        <i class="fa-brands fa-github-alt logo-icon"></i>
+        <span>Repo<span class="gradient-text">Radar</span></span>
+      </div>
+      <div class="header-badge">
+        <span class="pulse-dot"></span>
+        Tactical Intelligence Engine
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      
+      <!-- Input Panel -->
+      <section class="search-section card">
+        <div class="card-glow"></div>
+        <h2>Analyze GitHub Profile</h2>
+        <p class="section-desc">Analyze repositories, languages, followers, and compute advanced developer insight scores.</p>
+        
+        <form id="search-form" class="search-bar">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="username-input" placeholder="Enter GitHub username (e.g., torvalds, gaearon)..." required autocomplete="off">
+          <button type="submit" class="btn btn-primary">
+            <span>Analyze</span>
+            <i class="fa-solid fa-bolt"></i>
+          </button>
+        </form>
+
+        <div id="loading" class="loading-spinner hidden">
+          <div class="spinner"></div>
+          <span class="loading-text">Scanning GitHub Profile & Repositories...</span>
+        </div>
+
+        <div id="error-message" class="error-banner hidden">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="error-text">GitHub user not found.</span>
+        </div>
+      </section>
+
+      <!-- Dashboard Layout Grid -->
+      <div class="dashboard-grid">
+        
+        <!-- Left: Stored Profiles Grid -->
+        <section class="profiles-list-section card">
+          <div class="card-glow"></div>
+          <div class="section-header">
+            <h3>Analyzed Profiles</h3>
+            <button id="compare-btn" class="btn btn-outline btn-sm hidden">
+              <i class="fa-solid fa-columns"></i> Compare Selected (<span id="compare-count">0</span>)
+            </button>
+          </div>
+          <div id="profiles-grid" class="profiles-grid">
+            <!-- Dynamically populated profiles -->
+            <div class="no-data">
+              <i class="fa-solid fa-folder-open"></i>
+              <p>No profiles analyzed yet. Search a user to begin!</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right: Detail Panel / Report -->
+        <section class="detail-section card" id="detail-card">
+          <div class="card-glow"></div>
+          
+          <div id="detail-placeholder" class="detail-placeholder">
+            <i class="fa-solid fa-chart-line placeholder-icon"></i>
+            <h4>Radar Intelligence Console</h4>
+            <p>Select an analyzed profile or search for a new one to view detailed dashboards, grades, languages, and repo statistics.</p>
+          </div>
+
+          <div id="detail-content" class="detail-content hidden">
+            <!-- Header of Details -->
+            <div class="detail-profile-header">
+              <img id="detail-avatar" src="" alt="Avatar">
+              <div class="detail-name-meta">
+                <h3 id="detail-fullname">Name</h3>
+                <span id="detail-username">@username</span>
+                <p id="detail-bio">No bio description available.</p>
+              </div>
+              <div class="grade-badge-container" data-tooltip="Calculated bracket: S (1000+), A+ (500+), A (250+), B+ (100+), B (50+), C (<50)">
+                <span id="detail-grade" class="grade-badge">A+</span>
+                <span class="grade-label">Dev Grade</span>
+              </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-row">
+              <div class="stat-card">
+                <span class="stat-num" id="stat-repos">0</span>
+                <span class="stat-label">Repos</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num" id="stat-followers">0</span>
+                <span class="stat-label">Followers</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num" id="stat-following">0</span>
+                <span class="stat-label">Following</span>
+              </div>
+              <div class="stat-card" data-tooltip="Overall rating: Followers (3x) + Repos (1x) + Gists (2x) + Stars (5x) + Forks (3x)">
+                <span class="stat-num" id="stat-score">0</span>
+                <span class="stat-label">Radar Score</span>
+              </div>
+            </div>
+
+            <!-- Tabs Section -->
+            <div class="tabs-container">
+              <div class="tab-headers">
+                <button class="tab-btn active" data-tab="languages-tab">Languages</button>
+                <button class="tab-btn" data-tab="repos-tab">Top Repos</button>
+                <button class="tab-btn" data-tab="scorecard-tab">Scorecard</button>
+                <button class="tab-btn" data-tab="social-tab">Social Web</button>
+              </div>
+
+              <!-- Tab Contents -->
+              <div class="tab-body">
+                
+                <!-- Languages Tab -->
+                <div class="tab-pane active" id="languages-tab">
+                  <div class="languages-flex">
+                    <div class="chart-wrapper">
+                      <canvas id="languageChart"></canvas>
+                    </div>
+                    <div class="languages-list" id="languages-legend">
+                      <!-- Populated dynamically -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Repos Tab -->
+                <div class="tab-pane" id="repos-tab">
+                  <div class="repo-list" id="repos-container">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+
+                <!-- Scorecard Tab -->
+                <div class="tab-pane" id="scorecard-tab">
+                  <div class="scorecard-layout">
+                    <div class="scorecard-dial">
+                      <div class="score-circle">
+                        <span id="scorecard-number">0</span>
+                        <span class="scorecard-max">Score</span>
+                      </div>
+                    </div>
+                    <div class="scorecard-details">
+                      <h4 id="scorecard-title">Open Source Enthusiast</h4>
+                      <p id="scorecard-description">This developer shows strong engagement across public coding systems. Detailed repository breakdowns confirm solid portfolio structure and community interactions.</p>
+                      <div class="scorecard-breakdown">
+                        <h5>Score Metric Distribution</h5>
+                        <ul>
+                          <li data-tooltip="Each follower/following contributes 3 points to your overall Radar Score"><i class="fa-solid fa-users icon-color-1"></i> Followers Influence: <strong id="score-followers">0</strong></li>
+                          <li data-tooltip="Each star across all repositories contributes 5 points to your score"><i class="fa-solid fa-code icon-color-2"></i> Star Power Rating: <strong id="score-stars">0</strong></li>
+                          <li data-tooltip="Each fork of your repositories contributes 3 points to your score"><i class="fa-solid fa-code-branch icon-color-3"></i> Fork Adaptations: <strong id="score-forks">0</strong></li>
+                          <li data-tooltip="Completeness points added for: Location (+10), Bio (+10), Company (+20), Blog Link (+10)"><i class="fa-solid fa-id-card icon-color-4"></i> Profile Completeness: <strong id="score-completeness">0</strong> / 50</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Social Tab -->
+                <div class="tab-pane" id="social-tab">
+                  <div class="social-radar-container">
+                    <canvas id="socialGraphCanvas" width="500" height="300" style="width: 100%; height: 300px; background: #000; border: 1px solid var(--border-color);"></canvas>
+                    <p style="font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                      Tactical database connections & tech overlap scan
+                    </p>
+                  </div>
+                  <div class="synergy-section" style="margin-top: 1.5rem;">
+                    <h5 data-tooltip="Overlaps derived from shared repo names in our database (10x weight) and technology language configurations (2x weight)" style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem;">
+                      Top Synergy Nodes (Repo/Fork Overlaps)
+                    </h5>
+                    <div id="synergy-users-list" class="repo-list" style="max-height: 140px;">
+                      <!-- Dynamic list populated from server -->
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Side-by-Side Comparison Modal -->
+      <div id="comparison-modal" class="modal hidden">
+        <div class="modal-content card">
+          <div class="modal-header">
+            <h3><i class="fa-solid fa-scale-balanced gradient-text"></i> Profile Comparison Matrix</h3>
+            <button class="close-modal-btn" id="close-modal">&times;</button>
+          </div>
+          <div class="comparison-grid">
+            <div class="comparison-col" id="compare-col-1">
+              <!-- Dynamically rendered profile comparison -->
+            </div>
+            <div class="comparison-vs">VS</div>
+            <div class="comparison-col" id="compare-col-2">
+              <!-- Dynamically rendered profile comparison -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>&copy; 2026 RepoRadar. Developed with <i class="fa-solid fa-heart accent-text"></i>. Professional Grade Developer Analysis Platform.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
