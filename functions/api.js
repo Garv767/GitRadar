@@ -154,22 +154,31 @@ async function calculateSynergy(profileId, username, githubConfig, skipNetwork =
         details = details ? `${details}. Direct follower/following overlap.` : 'Direct follower/following connection in database.';
       }
 
-      if (sharedLangs.length > 0 && !details) {
+      // Add shared languages score as a tiebreaker
+      // Add shared languages score as a tiebreaker
+      if (sharedLangs.length > 0) {
         score += sharedLangs.length * 5;
-        details = `Shared technology configurations: ${sharedLangs.slice(0, 3).join(', ')}`;
+        if (!details) {
+          details = `Shared technology configurations: ${sharedLangs.slice(0, 3).join(', ')}`;
+        }
       }
 
-      // Append user — use Object.assign to clone pg row (which is a frozen object)
-      synergyList.push(Object.assign({}, op, {
-        score,
-        overlap_repos: sharedRepos,
-        details: details || 'General database node proximity.'
-      }));
+      // Require at least 2 shared repos to avoid coincidental matches (like 'dotfiles' or 'blog')
+      const hasStrongRepoOverlap = sharedRepos.length >= 2;
+
+      // Only include nodes that have concrete relationships (multiple shared repos or follow connections)
+      if (hasStrongRepoOverlap || isConnectedNode) {
+        synergyList.push(Object.assign({}, op, {
+          score,
+          overlap_repos: sharedRepos,
+          details: details
+        }));
+      }
     }
 
-    // Sort and limit to 3
+    // Sort and limit to 10
     synergyList.sort((a, b) => b.score - a.score);
-    synergyUsers = synergyList.slice(0, 3);
+    synergyUsers = synergyList.slice(0, 10);
   } catch (err) {
     console.error("⚠️ Synergy: Calculation error:", err.message);
   }

@@ -415,6 +415,9 @@ function displayDetails(data) {
   statFollowing.textContent = p.following;
   statScore.textContent = p.developer_score;
 
+  // Render contribution heatmap
+  renderHeatmap(p);
+
   // Chart & Languages Tab
   renderLanguages(data.languages);
 
@@ -436,6 +439,27 @@ function displayDetails(data) {
       renderSocialGraph(p.username, activeSynergyUsers);
     }, 50);
   }
+}
+
+// -------------------------------------------------------------
+// RENDER CONTRIBUTION HEATMAP (Third-party GitHub API)
+// -------------------------------------------------------------
+function renderHeatmap(p) {
+  const container = document.getElementById('contribution-heatmap');
+  if (!container) return;
+  
+  // Use ghchart.rshah.org which generates a real SVG heatmap of the user's Github contributions.
+  // We pass '39d353' (Github's green / our accent color) to match the UI.
+  container.innerHTML = `
+    <div style="width: 100%; overflow-x: auto; padding-bottom: 0.5rem; text-align: center;">
+      <img 
+        src="https://github-readme-activity-graph.vercel.app/graph?username=${p.username}&bg_color=161821&color=39d353&line=39d353&point=ffffff&area=true&hide_border=true" 
+        alt="${p.username}'s GitHub Activity Graph" 
+        style="max-width: 100%; min-width: 650px; opacity: 0.9; border-radius: 4px;" 
+        onerror="this.parentElement.innerHTML='<p style=\\'color: var(--text-muted); font-size: 0.8rem;\\'>Heatmap data unavailable.</p>'"
+      />
+    </div>
+  `;
 }
 
 // -------------------------------------------------------------
@@ -704,8 +728,8 @@ function renderSocialGraph(username, synergyUsers) {
   // HiDPI / Retina fix — scale canvas buffer by devicePixelRatio for crisp text
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  const cssWidth  = (rect.width  > 0 ? rect.width  : canvas.width)  || 500;
-  const cssHeight = (rect.height > 0 ? rect.height : canvas.height) || 300;
+  const cssWidth  = (rect.width  > 0 ? rect.width  : canvas.width)  || 700;
+  const cssHeight = (rect.height > 0 ? rect.height : canvas.height) || 400;
 
   // Only resize buffer when dimensions actually change (avoids clearing mid-animation)
   const bufW = Math.round(cssWidth  * dpr);
@@ -730,13 +754,18 @@ function renderSocialGraph(username, synergyUsers) {
     cancelAnimationFrame(socialGraphAnimId);
   }
 
-  // Create only nodes representing ACTUAL synergy users in the DB
+  // Create nodes distributed evenly across full 360° with ring-based depth variation
   const nodes = [];
   const count = synergyUsers.length;
   
+  // Ring radii for depth variation: inner, middle, outer — safe inside 400px canvas
+  const rings = [120, 170, 120]; // alternating depth gives a nice layered look
+
   for (let i = 0; i < count; i++) {
-    const angle = (i * 2 * Math.PI) / Math.max(count, 3); // distribute evenly
-    const distance = 100 + (i * 15);
+    // Spread ALL nodes evenly around the full circle — this is the key fix
+    const angle = (i * 2 * Math.PI) / count;
+    // Alternate ring distances for visual depth — purely cosmetic, doesn't affect spread
+    const distance = rings[i % rings.length];
     const px = cx + Math.cos(angle) * distance;
     const py = cy + Math.sin(angle) * distance;
     
@@ -758,7 +787,7 @@ function renderSocialGraph(username, synergyUsers) {
     // Draw grid rings (Tactical radar circles)
     ctx.strokeStyle = '#1c1f2b';
     ctx.lineWidth = 1;
-    [55, 100, 145].forEach(r => {
+    [60, 120, 175].forEach(r => {
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, 2 * Math.PI);
       ctx.stroke();
@@ -769,7 +798,7 @@ function renderSocialGraph(username, synergyUsers) {
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(scanAngle) * 175, cy + Math.sin(scanAngle) * 175);
+    ctx.lineTo(cx + Math.cos(scanAngle) * 185, cy + Math.sin(scanAngle) * 185);
     ctx.stroke();
 
     scanAngle += 0.015;
@@ -785,15 +814,19 @@ function renderSocialGraph(username, synergyUsers) {
       
       // Node circle
       ctx.beginPath();
-      ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI);
+      ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI);
       ctx.fillStyle = '#00f0ff';
       ctx.fill();
 
-      // Node label
+      // Node label with background for readability
+      ctx.font = 'bold 12px Space Grotesk';
+      const labelText = `${node.label} (${node.grade})`;
+      const textW = ctx.measureText(labelText).width;
+      ctx.fillStyle = 'rgba(10,11,14,0.7)';
+      ctx.fillRect(node.x - textW / 2 - 3, node.y - 27, textW + 6, 16);
       ctx.fillStyle = '#f0f2f5';
-      ctx.font = 'bold 11px Space Grotesk';
       ctx.textAlign = 'center';
-      ctx.fillText(`${node.label} (${node.grade})`, node.x, node.y - 12);
+      ctx.fillText(labelText, node.x, node.y - 14);
     });
 
     // Center Node (Active Developer)
@@ -868,7 +901,7 @@ function renderSynergyUsersList(users) {
       </div>
       <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; border-top: 1px solid #161821; padding-top: 0.4rem; width: 100%;">
         <i class="fa-solid fa-code-branch" style="margin-right: 0.25rem; color: var(--color-accent);"></i>
-        ${u.details || 'General database node connection.'}
+        ${u.details || 'Active technological synergy overlap.'}
       </div>
     `;
     container.appendChild(item);

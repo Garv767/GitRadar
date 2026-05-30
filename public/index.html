@@ -22,7 +22,7 @@
   <div class="blob blob-purple"></div>
   <div class="blob blob-cyan"></div>
 
-  <div class="app-container">
+  <div class="app-container"> 
     <!-- Header Section -->
     <header class="app-header" style="display: flex; justify-content: space-between; align-items: center;">
       <div class="logo">
@@ -137,6 +137,17 @@
               </div>
             </div>
 
+            <!-- Contribution Heatmap Section -->
+            <div class="heatmap-section">
+              <h4 style="margin: 0 0 0.5rem 0; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
+                <i class="fa-regular fa-calendar-check" style="color: var(--color-accent);"></i>
+                Contribution Activity (Past Year)
+              </h4>
+              <div id="contribution-heatmap" class="heatmap-container">
+                <!-- Heatmap cells generated dynamically -->
+              </div>
+            </div>
+
             <!-- Tabs Section -->
             <div class="tabs-container">
               <div class="tab-headers">
@@ -196,7 +207,7 @@
                 <!-- Social Tab -->
                 <div class="tab-pane" id="social-tab">
                   <div class="social-radar-container">
-                    <canvas id="socialGraphCanvas" width="500" height="300" style="width: 100%; height: 300px; background: #000; border: 1px solid var(--border-color);"></canvas>
+                    <canvas id="socialGraphCanvas" width="700" height="400" style="width: 100%; height: 400px; background: #000; border: 1px solid var(--border-color);"></canvas>
                     <p style="font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
                       Tactical database connections & tech overlap scan
                     </p>
@@ -205,7 +216,7 @@
                     <h5 data-tooltip="Overlaps derived from shared repo names in our database (10x weight) and technology language configurations (2x weight)" style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem;">
                       Top Synergy Nodes (Repo/Fork Overlaps)
                     </h5>
-                    <div id="synergy-users-list" class="repo-list" style="max-height: 140px;">
+                    <div id="synergy-users-list" class="repo-list" style="max-height: 280px;">
                       <!-- Dynamic list populated from server -->
                     </div>
                   </div>
