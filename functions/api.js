@@ -154,8 +154,7 @@ async function calculateSynergy(profileId, username, githubConfig, skipNetwork =
         details = details ? `${details}. Direct follower/following overlap.` : 'Direct follower/following connection in database.';
       }
 
-      // Add shared languages score as a tiebreaker
-      // Add shared languages score as a tiebreaker
+      // Add shared languages score as a tiebreaker only (never sole reason to include)
       if (sharedLangs.length > 0) {
         score += sharedLangs.length * 5;
         if (!details) {
@@ -163,11 +162,8 @@ async function calculateSynergy(profileId, username, githubConfig, skipNetwork =
         }
       }
 
-      // Require at least 2 shared repos to avoid coincidental matches (like 'dotfiles' or 'blog')
-      const hasStrongRepoOverlap = sharedRepos.length >= 2;
-
-      // Only include nodes that have concrete relationships (multiple shared repos or follow connections)
-      if (hasStrongRepoOverlap || isConnectedNode) {
+      // Include if there is at least 1 shared repo name OR a direct follow connection
+      if (sharedRepos.length >= 1 || isConnectedNode) {
         synergyList.push(Object.assign({}, op, {
           score,
           overlap_repos: sharedRepos,
@@ -369,9 +365,7 @@ app.post('/api/analyze/:username', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
 // ENDPOINT: Get All Analyzed Profiles
-// -------------------------------------------------------------
 app.get('/api/profiles', async (req, res) => {
   try {
     const profiles = await db.query('SELECT * FROM profiles ORDER BY developer_score DESC');
@@ -382,9 +376,7 @@ app.get('/api/profiles', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
 // ENDPOINT: Get Details of a Single Profile
-// -------------------------------------------------------------
 app.get('/api/profiles/:username', async (req, res) => {
   const username = req.params.username.trim().toLowerCase();
   const githubConfig = getGithubConfig(req);
@@ -399,8 +391,8 @@ app.get('/api/profiles/:username', async (req, res) => {
     const repositories = await db.query('SELECT * FROM repositories WHERE profile_id = ? ORDER BY stars DESC', [profile.id]);
     const languages = await db.query('SELECT * FROM languages WHERE profile_id = ? ORDER BY percentage DESC', [profile.id]);
 
-    // Calculate dynamic synergy scores safely using unified helper (skips network on details request for massive speedups)
-    const synergyUsers = await calculateSynergy(profile.id, username, githubConfig, true);
+    // Calculate dynamic synergy scores — includes follower/following network check
+    const synergyUsers = await calculateSynergy(profile.id, username, githubConfig);
 
     res.json({
       profile,
@@ -414,9 +406,7 @@ app.get('/api/profiles/:username', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
 // ENDPOINT: Delete Profile from DB
-// -------------------------------------------------------------
 app.delete('/api/profiles/:username', async (req, res) => {
   const username = req.params.username.trim().toLowerCase();
 

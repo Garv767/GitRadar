@@ -1,6 +1,6 @@
-# RepoRadar - Architectural Developer Intelligence Platform
+# GitRadar - Architectural Developer Intelligence Platform
 
-RepoRadar is an enterprise-grade developer profile analyzer, metrics aggregation platform, and social synergy radar. The application dynamically scans and indexes GitHub profiles, processes repository dimensions, parses linguistic compositions, and calculates multi-weighted developer capability vectors. 
+GitRadar is an enterprise-grade developer profile analyzer, metrics aggregation platform, and social synergy radar. The application dynamically scans and indexes GitHub profiles, processes repository dimensions, parses linguistic compositions, and calculates multi-weighted developer capability vectors. 
 
 All insights are persisted in a production-ready relational database backend (supporting both PostgreSQL/Neon and MySQL dialects) and visualized via a premium, dark-mode tactical dashboard built on brutalist, hyper-functional visual design paradigms.
 
@@ -8,10 +8,11 @@ All insights are persisted in a production-ready relational database backend (su
 
 ## 🚀 Key Features
 
-*   **Tactical Social Web Synergy Mapping**: Uses dynamic, real-time relational algorithms on the backend to maps follower clusters, technology overlaps, and shared repository footprints on a custom HTML5 canvas canvas, resolving peer clusters automatically.
+*   **Tactical Social Web Synergy Mapping**: Uses dynamic relational algorithms on the backend to map concrete clusters. Peer connections are only formed on **strict rules**: ≥1 shared repository name in the database OR a direct GitHub follower/following relationship. Visualized on a custom HTML5 canvas.
+*   **Third-Party Activity Integrations**: Embeds real-time GitHub Contribution Heatmaps (via `ghchart.rshah.org`) and detailed statistical breakdowns (via `github-profile-summary-cards`) seamlessly into the dark-mode dashboard.
 *   **Dual-Dialect Database Engine**: Dynamic backend database adapter that handles **PostgreSQL (Neon serverless)** and **MySQL** transparently on startup based on the connection string.
 *   **Weighted Scoring Vector Model**: Uses multi-layered criteria (Follower Influence, Star Power Ratings, Fork Adaptations, and Profile Completeness Matrix) to calculate dynamic Developer Scores and alphanumeric grades (`S`, `A+`, `A`, `B+`, `B`, `C`).
-*   **Modern Editorial UI System**: A premium theme designed around robust typography (`Syne` + `Space Grotesk` fonts), extreme micro-interactions, responsive panel architecture, and high-performance radar visualizations.
+*   **Modern Editorial UI System**: A premium theme designed around robust typography (`Syne` + `Space Grotesk` fonts), responsive flex layouts, and high-performance tactical visualizations.
 *   **Side-by-Side Profile Comparison Matrix**: Enables dynamic structural comparisons of any two analyzed profiles in a responsive HUD popup, detailing relative technical synergy.
 
 ---
@@ -28,7 +29,7 @@ All insights are persisted in a production-ready relational database backend (su
 ## 📂 System Architecture
 
 ```
-reporadar/
+gitradar/
 ├── public/                 # Production-Grade Single Page App
 │   ├── index.html          # Structural UI shell with custom tooltips
 │   ├── style.css           # Premium CSS styling system (Editorial layout)
@@ -50,7 +51,7 @@ npm install
 ```
 
 ### 2. Configure Environment Variables (`.env`)
-Create a `.env` file in the root directory:
+Copy [.env.example](https://github.com/Garv767/GitRadar/blob/main/.env.example) to `.env` in the root directory and configure the variables:
 ```ini
 PORT=5000
 
@@ -58,10 +59,14 @@ PORT=5000
 DATABASE_URL=postgresql://neondb_owner:password@ep-snowflake.us-east-2.aws.neon.tech/neondb?sslmode=require
 
 # MySQL (Alternative):
-# DATABASE_URL=mysql://root:password@127.0.0.1:3306/reporadar
+# DATABASE_URL=mysql://root:password@127.0.0.1:3306/gitradar
 
 # Optional: GitHub PAT to avoid API rate limits:
 # GITHUB_TOKEN=github_pat_xxxx
+
+# GitHub OAuth credentials (required for user sign-in):
+# GITHUB_CLIENT_ID=your_github_client_id
+# GITHUB_CLIENT_SECRET=your_github_client_secret
 ```
 
 ### 3. Run the Platform

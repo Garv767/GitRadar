@@ -1,5 +1,5 @@
 {
-  "name": "reporadar-profile-analyzer",
+  "name": "gitradar-profile-analyzer",
   "version": "1.0.0",
   "description": "GitHub Profile Analyzer with beautiful premium UI dashboard and advanced analytics",
   "main": "server.js",

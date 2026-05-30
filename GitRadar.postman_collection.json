@@ -1,0 +1,167 @@
+{
+	"info": {
+		"_postman_id": "8b51d45c-02cf-4b1f-adcb-f14d86b72a91",
+		"name": "GitRadar API",
+		"description": "Postman collection for GitRadar Developer Intelligence Platform API endpoints. Supports dynamic local and production switching.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "GitHub OAuth Token Exchange",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"GITHUB_TEMPORARY_OAUTH_CODE_HERE\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/github",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"github"
+							]
+						},
+						"description": "Exchanges a temporary GitHub OAuth code for a functional Bearer Access Token."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Profiles",
+			"item": [
+				{
+					"name": "Analyze GitHub Profile",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{githubToken}}",
+								"description": "Optional: Personal access token or OAuth token to avoid rate limits",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/analyze/garv767",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"analyze",
+								"garv767"
+							]
+						},
+						"description": "Triggers the capability metrics engine to fetch, evaluate, and save GitHub user data to the database."
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Analyzed Profiles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/profiles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"profiles"
+							]
+						},
+						"description": "Retrieves high-level metadata (developer scores and grades) for all indexed profiles, sorted by performance score DESC."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single Profile Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/profiles/garv767",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"profiles",
+								"garv767"
+							]
+						},
+						"description": "Fetches stored database insights, language allocations, repositories, and recalculates real-time cluster synergies."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Profile Index",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/profiles/garv767",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"profiles",
+								"garv767"
+							]
+						},
+						"description": "Removes the user profile and dynamically cascades table deletion of repositories and language models."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "githubToken",
+			"value": "your_github_token_here",
+			"type": "string"
+		}
+	]
+}

@@ -1,7 +1,5 @@
--- ==========================================
 -- Database Schema for GitHub Profile Analyzer
 -- Supports both MySQL and PostgreSQL
--- ==========================================
 
 -- 1. PROFILES TABLE
 -- Stores the high-level analyzed developer information

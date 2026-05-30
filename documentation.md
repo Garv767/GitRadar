@@ -1,12 +1,12 @@
-# RepoRadar - Core Architectural & Technical Specifications
+# GitRadar - Core Architectural & Technical Specifications
 
-This document provides a highly detailed explanation of the architecture, database configurations, metrics algorithms, canvas render loops, and API flows powering RepoRadar.
+This document provides a highly detailed explanation of the architecture, database configurations, metrics algorithms, canvas render loops, and API flows powering GitRadar.
 
 ---
 
 ## 1. Deep Core Architecture
 
-RepoRadar functions as an asynchronous data gathering and evaluation service. The data lifecycle is structured in a clear pipeline:
+GitRadar functions as an asynchronous data gathering and evaluation service. The data lifecycle is structured in a clear pipeline:
 
 ```mermaid
 graph TD;
@@ -75,13 +75,24 @@ Alphanumeric grading bands partition developers into capability segments:
 
 ## 4. Social Synergy Cluster Mapping
 
-The synergy mapping maps developer connections across three direct database relationships:
+The synergy mapping matches developer connections across strict database relationships to form concrete clusters. A user only appears in the network if they meet at least one of these concrete rules:
 
-1.  **Direct Follower Networks** (Weight: 150 points): Inspects if the target profile is a follower or followed by the analyzed profile.
-2.  **Shared Repositories** (Weight: 100 points per match): Finds overlapping repository names, which implies direct co-contributions or identical forks.
-3.  **Linguistic Profile Overlap** (Weight: 5 points per language): Maps matches in the languages tables.
+1.  **Shared Repositories** (Weight: 100 points per match): Finds overlapping repository names, which implies direct co-contributions or identical forks. At least **1 shared repository name** is strictly required to form a repo-based connection.
+2.  **Direct Follower Networks** (Weight: 150 points): Inspects if the target profile is a follower or followed by the analyzed profile. This is checked directly via the GitHub API.
 
-These parameters are computed procedurally across other profiles in the database. The top three highest-scoring synergy developers are matched and served to the UI.
+If a concrete connection is established, the system adds tie-breaker points for:
+*   **Linguistic Profile Overlap** (Weight: 5 points per language): Maps matches in the languages tables. (Note: shared languages alone cannot form a connection).
+
+These parameters are computed procedurally across other profiles in the database. The top 10 highest-scoring synergy developers are matched and served to the UI.
+
+---
+
+## 5. Third-Party Visual Integrations
+
+To provide enterprise-grade analytics without overloading local processing, the UI directly integrates with established third-party open-source data visualization services:
+
+*   **Contribution Heatmap**: Uses `ghchart.rshah.org` to generate a real-time SVG grid of the developer's 365-day GitHub contribution activity, perfectly color-matched to the platform's Volt Lime accent (`#39d353`).
+*   **Detailed Stats Cards**: Leverages `github-profile-summary-cards` to render detailed vector graphics covering total stars, commits, PRs, issues, and a radar chart of activity by time-of-day.
 
 ---
 
@@ -111,7 +122,7 @@ An animation loop runs at screen refresh rate utilizing `requestAnimationFrame(d
 
 ## 6. REST API Reference & Payload Mechanics
 
-RepoRadar exposes four highly optimized REST API endpoints to manage profile index states, pull GitHub metrics, compute social synergies on-demand, and retrieve granular database metadata.
+GitRadar exposes four highly optimized REST API endpoints to manage profile index states, pull GitHub metrics, compute social synergies on-demand, and retrieve granular database metadata.
 
 ### A. Analyze GitHub Profile
 *   **Method / Endpoint**: `POST /api/analyze/:username`
