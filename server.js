@@ -79,19 +79,23 @@ async function calculateSynergy(profileId, username, githubConfig) {
     if (otherProfiles.length === 0) return [];
     
     // 2. Fetch active profile's repositories & languages
-    const myRepos = await db.query('SELECT repo_name, forks, stars FROM repositories WHERE profile_id = ?', [profileId]);
-    const myLanguages = await db.query('SELECT language FROM languages WHERE profile_id = ?', [profileId]);
+    const [myRepos, myLanguages] = await Promise.all([
+      db.query('SELECT repo_name, forks, stars FROM repositories WHERE profile_id = ?', [profileId]),
+      db.query('SELECT language FROM languages WHERE profile_id = ?', [profileId])
+    ]);
     
     const myRepoNames = myRepos.map(r => r.repo_name.toLowerCase());
     const myLangNames = myLanguages.map(l => l.language.toLowerCase());
 
     const synergyList = [];
 
-    // 3. Fetch followers & following list to discover genuine network matches
+    // 3. Fetch followers & following list in parallel to discover network matches
     let connectionLogins = [];
     try {
-      const followersRes = await axios.get(`https://api.github.com/users/${username}/followers?per_page=100`, githubConfig);
-      const followingRes = await axios.get(`https://api.github.com/users/${username}/following?per_page=100`, githubConfig);
+      const [followersRes, followingRes] = await Promise.all([
+        axios.get(`https://api.github.com/users/${username}/followers?per_page=100`, githubConfig),
+        axios.get(`https://api.github.com/users/${username}/following?per_page=100`, githubConfig)
+      ]);
       
       const followers = (followersRes.data || []).map(f => f.login.toLowerCase());
       const following = (followingRes.data || []).map(f => f.login.toLowerCase());
@@ -100,12 +104,33 @@ async function calculateSynergy(profileId, username, githubConfig) {
       console.warn(`⚠️ Synergy API: GitHub rate limits or connection issue for ${username}. Using database overlaps only.`);
     }
 
+    // 4. Batch fetch all repositories and languages to avoid the O(N) database query loop
+    const otherProfileIds = otherProfiles.map(op => op.id);
+    let allRepos = [];
+    let allLanguages = [];
+    if (otherProfileIds.length > 0) {
+      // Dialect-safe queries (Postgres/MySQL compatible)
+      const placeHolders = otherProfileIds.map((_, i) => db.isPostgres ? `$${i+1}` : '?').join(',');
+      allRepos = await db.query(`SELECT profile_id, repo_name, forks, stars FROM repositories WHERE profile_id IN (${placeHolders})`, otherProfileIds);
+      allLanguages = await db.query(`SELECT profile_id, language FROM languages WHERE profile_id IN (${placeHolders})`, otherProfileIds);
+    }
+
+    const reposByProfile = {};
+    const langsByProfile = {};
+    allRepos.forEach(r => {
+      if (!reposByProfile[r.profile_id]) reposByProfile[r.profile_id] = [];
+      reposByProfile[r.profile_id].push(r);
+    });
+    allLanguages.forEach(l => {
+      if (!langsByProfile[l.profile_id]) langsByProfile[l.profile_id] = [];
+      langsByProfile[l.profile_id].push(l);
+    });
+
     for (const op of otherProfiles) {
       const isConnectedNode = connectionLogins.includes(op.username.toLowerCase());
       
-      // Fetch their repositories & languages
-      const opRepos = await db.query('SELECT repo_name, forks, stars FROM repositories WHERE profile_id = ?', [op.id]);
-      const opLanguages = await db.query('SELECT language FROM languages WHERE profile_id = ?', [op.id]);
+      const opRepos = reposByProfile[op.id] || [];
+      const opLanguages = langsByProfile[op.id] || [];
       
       const opRepoNames = opRepos.map(r => r.repo_name.toLowerCase());
       const opLangNames = opLanguages.map(l => l.language.toLowerCase());
