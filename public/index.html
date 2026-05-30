@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RepoRadar - Premium GitHub Profile Analyzer</title>
+  <title>Git Radar - Premium GitHub Profile Analyzer</title>
   <!-- Google Fonts: Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="style.css">
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="icon" type="image/png" href="gitradar-logo.png">
 </head>
 <body>
 
@@ -23,14 +24,18 @@
 
   <div class="app-container">
     <!-- Header Section -->
-    <header class="app-header">
+    <header class="app-header" style="display: flex; justify-content: space-between; align-items: center;">
       <div class="logo">
-        <i class="fa-brands fa-github-alt logo-icon"></i>
-        <span>Repo<span class="gradient-text">Radar</span></span>
+        <img src="gitradar-logo.png" alt="Git Radar Logo" style="width: 24px; height: 24px; border-radius: 50%; filter: drop-shadow(0 0 6px var(--color-accent)); margin-right: 0.5rem;">
+        <span>Git <span class="gradient-text">Radar</span></span>
       </div>
-      <div class="header-badge">
-        <span class="pulse-dot"></span>
-        Tactical Intelligence Engine
+      <div class="auth-section" id="auth-section">
+        <button id="login-btn" class="btn btn-secondary btn-sm"><i class="fa-brands fa-github"></i> Sign In</button>
+        <div id="user-profile-badge" class="hidden" style="display: flex; align-items: center; gap: 0.5rem;">
+          <img id="logged-in-avatar" src="" alt="Avatar" style="width: 24px; height: 24px; border-radius: 50%;">
+          <span id="logged-in-username" style="font-size: 0.9rem; font-weight: 500;"></span>
+          <button id="logout-btn" class="btn btn-icon btn-sm" title="Sign Out"><i class="fa-solid fa-sign-out-alt"></i></button>
+        </div>
       </div>
     </header>
 
@@ -99,7 +104,10 @@
             <div class="detail-profile-header">
               <img id="detail-avatar" src="" alt="Avatar">
               <div class="detail-name-meta">
-                <h3 id="detail-fullname">Name</h3>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                  <h3 id="detail-fullname" style="margin: 0;">Name</h3>
+                  <button id="compare-me-btn" class="btn btn-outline btn-sm hidden" style="border-radius: 20px; padding: 0.2rem 0.8rem; font-size: 0.8rem;"><i class="fa-solid fa-code-compare"></i> Compare with me</button>
+                </div>
                 <span id="detail-username">@username</span>
                 <p id="detail-bio">No bio description available.</p>
               </div>
@@ -229,11 +237,33 @@
         </div>
       </div>
 
+      <!-- Auth Modal -->
+      <div id="auth-modal" class="modal hidden">
+        <div class="modal-content card" style="max-width: 400px; text-align: center;">
+          <div class="modal-header">
+            <h3><i class="fa-solid fa-lock gradient-text"></i> Authenticate</h3>
+            <button class="close-modal-btn" id="close-auth-modal">&times;</button>
+          </div>
+          <div style="padding: 1.5rem;">
+            <p style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">Sign in to bypass rate limits and access personalized features like "Compare with me".</p>
+            <button id="oauth-login-btn" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem;">
+              <i class="fa-brands fa-github"></i> Sign in with GitHub
+            </button>
+            <div style="margin: 1rem 0; color: var(--text-muted); font-size: 0.8rem;">OR</div>
+            <div style="text-align: left;">
+              <label for="pat-input" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem; display: block;">Paste Personal Access Token</label>
+              <input type="password" id="pat-input" placeholder="ghp_xxxxxxxxxxxx" class="form-control" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: #fff; border-radius: 4px;">
+              <button id="pat-login-btn" class="btn btn-secondary" style="width: 100%;">Save Token</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>&copy; 2026 RepoRadar. Developed with <i class="fa-solid fa-heart accent-text"></i>. Professional Grade Developer Analysis Platform.</p>
+      <p>&copy; 2026 Git Radar. Developed with <i class="fa-solid fa-heart accent-text"></i>. Professional Grade Developer Analysis Platform.</p>
     </footer>
   </div>
 

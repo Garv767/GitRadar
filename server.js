@@ -15,13 +15,50 @@ app.use(express.json());
 // Serve static frontend files
 app.use(express.static('public'));
 
-// Axios configuration with optional token
-const githubRequestConfig = {};
-if (process.env.GITHUB_TOKEN) {
-  githubRequestConfig.headers = {
-    Authorization: `token ${process.env.GITHUB_TOKEN}`
-  };
+// Helper to construct Axios configuration with optional token
+function getGithubConfig(req) {
+  const config = {};
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    config.headers = {
+      Authorization: `token ${token}`
+    };
+  } else if (process.env.GITHUB_TOKEN) {
+    config.headers = {
+      Authorization: `token ${process.env.GITHUB_TOKEN}`
+    };
+  }
+  return config;
 }
+
+// Endpoint to handle GitHub OAuth exchange
+app.post('/api/auth/github', async (req, res) => {
+  const { code } = req.body;
+  if (!code) {
+    return res.status(400).json({ error: 'OAuth code is required' });
+  }
+  try {
+    const response = await axios.post('https://github.com/login/oauth/access_token', {
+      client_id: process.env.GITHUB_CLIENT_ID,
+      client_secret: process.env.GITHUB_CLIENT_SECRET,
+      code
+    }, {
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+    
+    if (response.data.error) {
+      return res.status(400).json({ error: response.data.error_description });
+    }
+    
+    res.json({ access_token: response.data.access_token });
+  } catch (error) {
+    console.error('❌ API: Error exchanging OAuth code:', error.message);
+    res.status(500).json({ error: 'Failed to exchange OAuth code' });
+  }
+});
 
 // Score & Grade Calculator Helper
 function calculateDeveloperGrade(score) {
@@ -34,7 +71,7 @@ function calculateDeveloperGrade(score) {
 }
 
 // Helper to calculate synergy users (commit/fork/languages overlaps + follower overlaps)
-async function calculateSynergy(profileId, username) {
+async function calculateSynergy(profileId, username, githubConfig) {
   let synergyUsers = [];
   try {
     // 1. Fetch other profiles in the database
@@ -53,8 +90,8 @@ async function calculateSynergy(profileId, username) {
     // 3. Fetch followers & following list to discover genuine network matches
     let connectionLogins = [];
     try {
-      const followersRes = await axios.get(`https://api.github.com/users/${username}/followers?per_page=100`, githubRequestConfig);
-      const followingRes = await axios.get(`https://api.github.com/users/${username}/following?per_page=100`, githubRequestConfig);
+      const followersRes = await axios.get(`https://api.github.com/users/${username}/followers?per_page=100`, githubConfig);
+      const followingRes = await axios.get(`https://api.github.com/users/${username}/following?per_page=100`, githubConfig);
       
       const followers = (followersRes.data || []).map(f => f.login.toLowerCase());
       const following = (followingRes.data || []).map(f => f.login.toLowerCase());
@@ -113,6 +150,7 @@ async function calculateSynergy(profileId, username) {
 }
 app.post('/api/analyze/:username', async (req, res) => {
   const username = req.params.username.trim().toLowerCase();
+  const githubConfig = getGithubConfig(req);
 
   if (!username) {
     return res.status(400).json({ error: 'Username is required' });
@@ -124,7 +162,7 @@ app.post('/api/analyze/:username', async (req, res) => {
     // 1. Fetch main GitHub profile
     let profileResponse;
     try {
-      profileResponse = await axios.get(`https://api.github.com/users/${username}`, githubRequestConfig);
+      profileResponse = await axios.get(`https://api.github.com/users/${username}`, githubConfig);
     } catch (apiErr) {
       if (apiErr.response && apiErr.response.status === 404) {
         return res.status(404).json({ error: `GitHub user "${username}" not found.` });
@@ -137,7 +175,7 @@ app.post('/api/analyze/:username', async (req, res) => {
     // 2. Fetch user's public repositories (up to 100)
     const reposResponse = await axios.get(
       `https://api.github.com/users/${username}/repos?per_page=100&sort=updated`,
-      githubRequestConfig
+      githubConfig
     );
     const repos = reposResponse.data || [];
 
@@ -260,7 +298,7 @@ app.post('/api/analyze/:username', async (req, res) => {
     }
 
     // Calculate synergy users beautifully
-    const synergyUsers = await calculateSynergy(profileId, username);
+    const synergyUsers = await calculateSynergy(profileId, username, githubConfig);
 
     const payload = {
       profile: {
@@ -312,6 +350,7 @@ app.get('/api/profiles', async (req, res) => {
 // -------------------------------------------------------------
 app.get('/api/profiles/:username', async (req, res) => {
   const username = req.params.username.trim().toLowerCase();
+  const githubConfig = getGithubConfig(req);
 
   try {
     const profileRows = await db.query('SELECT * FROM profiles WHERE username = ?', [username]);
@@ -324,7 +363,7 @@ app.get('/api/profiles/:username', async (req, res) => {
     const languages = await db.query('SELECT * FROM languages WHERE profile_id = ? ORDER BY percentage DESC', [profile.id]);
 
     // Calculate dynamic synergy scores safely using unified helper
-    const synergyUsers = await calculateSynergy(profile.id, username);
+    const synergyUsers = await calculateSynergy(profile.id, username, githubConfig);
 
     res.json({
       profile,
