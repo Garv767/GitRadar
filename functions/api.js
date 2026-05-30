@@ -71,7 +71,7 @@ function calculateDeveloperGrade(score) {
 }
 
 // Helper to calculate synergy users (commit/fork/languages overlaps + follower overlaps)
-async function calculateSynergy(profileId, username, githubConfig) {
+async function calculateSynergy(profileId, username, githubConfig, skipNetwork = false) {
   let synergyUsers = [];
   try {
     // 1. Fetch other profiles in the database
@@ -91,17 +91,19 @@ async function calculateSynergy(profileId, username, githubConfig) {
 
     // 3. Fetch followers & following list in parallel to discover network matches
     let connectionLogins = [];
-    try {
-      const [followersRes, followingRes] = await Promise.all([
-        axios.get(`https://api.github.com/users/${username}/followers?per_page=100`, githubConfig),
-        axios.get(`https://api.github.com/users/${username}/following?per_page=100`, githubConfig)
-      ]);
-      
-      const followers = (followersRes.data || []).map(f => f.login.toLowerCase());
-      const following = (followingRes.data || []).map(f => f.login.toLowerCase());
-      connectionLogins = Array.from(new Set([...followers, ...following]));
-    } catch (apiErr) {
-      console.warn(`⚠️ Synergy API: GitHub rate limits or connection issue for ${username}. Using database overlaps only.`);
+    if (!skipNetwork) {
+      try {
+        const [followersRes, followingRes] = await Promise.all([
+          axios.get(`https://api.github.com/users/${username}/followers?per_page=100`, githubConfig),
+          axios.get(`https://api.github.com/users/${username}/following?per_page=100`, githubConfig)
+        ]);
+        
+        const followers = (followersRes.data || []).map(f => f.login.toLowerCase());
+        const following = (followingRes.data || []).map(f => f.login.toLowerCase());
+        connectionLogins = Array.from(new Set([...followers, ...following]));
+      } catch (apiErr) {
+        console.warn(`⚠️ Synergy API: GitHub rate limits or connection issue for ${username}. Using database overlaps only.`);
+      }
     }
 
     // 4. Batch fetch all repositories and languages to avoid the O(N) database query loop
@@ -388,8 +390,8 @@ app.get('/api/profiles/:username', async (req, res) => {
     const repositories = await db.query('SELECT * FROM repositories WHERE profile_id = ? ORDER BY stars DESC', [profile.id]);
     const languages = await db.query('SELECT * FROM languages WHERE profile_id = ? ORDER BY percentage DESC', [profile.id]);
 
-    // Calculate dynamic synergy scores safely using unified helper
-    const synergyUsers = await calculateSynergy(profile.id, username, githubConfig);
+    // Calculate dynamic synergy scores safely using unified helper (skips network on details request for massive speedups)
+    const synergyUsers = await calculateSynergy(profile.id, username, githubConfig, true);
 
     res.json({
       profile,
