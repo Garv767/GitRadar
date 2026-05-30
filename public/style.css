@@ -745,3 +745,27 @@ body {
   visibility: visible;
   transform: translateX(-50%) translateY(0);
 }
+
+/* Premium Loader and Fade Transitions */
+.loading-fade {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.comp-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 1rem;
+  color: var(--text-secondary);
+}
+
+.comp-loader .spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+

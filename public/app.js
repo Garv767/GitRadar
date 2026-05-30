@@ -10,6 +10,9 @@ let activeProfile = null;
 let selectedForComparison = [];
 let languageChartInstance = null;
 let activeSynergyUsers = [];
+let myUsername = null;
+let myAvatar = null;
+let profileCache = {}; // Cache of username -> { data: parsedPayload, timestamp: Date.now() }
 
 // DOM Elements
 const searchForm = document.getElementById('search-form');
@@ -57,7 +60,9 @@ const compareCol2 = document.getElementById('compare-col-2');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  fetchProfiles();
+  initAuth().then(() => {
+    fetchProfiles();
+  });
   setupTabs();
 
   // Search Submit
@@ -76,6 +81,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Compare Button Action
   compareBtn.addEventListener('click', showComparisonModal);
+  
+  const compareMeBtn = document.getElementById('compare-me-btn');
+  if (compareMeBtn) {
+    compareMeBtn.addEventListener('click', async () => {
+      if (activeProfile && myUsername) {
+        // Ensure my profile is analyzed
+        const exists = analyzedProfiles.find(p => p.username === myUsername);
+        if (!exists) {
+          const loadingText = document.querySelector('.loading-text');
+          const originalText = loadingText ? loadingText.textContent : '';
+          if (loadingText) {
+            loadingText.textContent = "Analyzing your profile to compute cluster synergies...";
+          }
+          try {
+            await analyzeProfile(myUsername);
+          } finally {
+            if (loadingText) {
+              loadingText.textContent = originalText;
+            }
+          }
+        }
+        selectedForComparison = [myUsername, activeProfile.username];
+        showComparisonModal();
+      }
+    });
+  }
+
+  // Auth Logic UI
+  const authModal = document.getElementById('auth-modal');
+  document.getElementById('login-btn').addEventListener('click', () => authModal.classList.remove('hidden'));
+  document.getElementById('close-auth-modal').addEventListener('click', () => authModal.classList.add('hidden'));
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('gitradar_github_token');
+    window.location.reload();
+  });
+  document.getElementById('oauth-login-btn').addEventListener('click', () => {
+    const clientId = 'Ov23liMMOsUbI0gCM4pO';
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=read:user`;
+  });
+  document.getElementById('pat-login-btn').addEventListener('click', () => {
+    const token = document.getElementById('pat-input').value.trim();
+    if (token) {
+      localStorage.setItem('gitradar_github_token', token);
+      window.location.reload();
+    }
+  });
 });
 
 // Setup Tabs Logic
@@ -107,7 +158,7 @@ function setupTabs() {
 // -------------------------------------------------------------
 async function fetchProfiles() {
   try {
-    const res = await fetch(`${API_BASE}/profiles`);
+    const res = await fetch(`${API_BASE}/profiles`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch profiles');
     
     analyzedProfiles = await res.json();
@@ -124,9 +175,13 @@ async function analyzeProfile(username) {
   hideError();
   showLoading();
   
+  const cacheKey = username.toLowerCase();
+  delete profileCache[cacheKey]; // Invalidate cache on new analysis
+
   try {
     const res = await fetch(`${API_BASE}/analyze/${username}`, {
-      method: 'POST'
+      method: 'POST',
+      headers: getAuthHeaders()
     });
 
     const data = await res.json();
@@ -137,6 +192,12 @@ async function analyzeProfile(username) {
 
     usernameInput.value = '';
     
+    // Store in cache
+    profileCache[cacheKey] = {
+      data: data,
+      timestamp: Date.now()
+    };
+
     // Refresh profiles list
     await fetchProfiles();
 
@@ -153,24 +214,51 @@ async function analyzeProfile(username) {
 // API CALL: Get Single Profile Details
 // -------------------------------------------------------------
 async function selectProfile(username) {
+  const cacheKey = username.toLowerCase();
+  const cached = profileCache[cacheKey];
+  const now = Date.now();
+  
+  // Cache TTL of 15 minutes (15 * 60 * 1000 = 900000ms)
+  if (cached && (now - cached.timestamp < 900000)) {
+    displayDetails(cached.data);
+    highlightActiveCard(username);
+    return;
+  }
+
+  const detailCard = document.getElementById('detail-card');
+  if (detailCard) {
+    detailCard.classList.add('loading-fade');
+  }
+
   try {
-    const res = await fetch(`${API_BASE}/profiles/${username}`);
+    const res = await fetch(`${API_BASE}/profiles/${username}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Profile details fetch failed');
 
     const data = await res.json();
-    displayDetails(data);
     
-    // Highlight selected in sidebar grid
-    document.querySelectorAll('.profile-item-card').forEach(card => {
-      card.classList.remove('active');
-      if (card.dataset.username === username) {
-        card.classList.add('active');
-      }
-    });
+    profileCache[cacheKey] = {
+      data: data,
+      timestamp: Date.now()
+    };
 
+    displayDetails(data);
+    highlightActiveCard(username);
   } catch (err) {
     console.error('Error selecting profile:', err);
+  } finally {
+    if (detailCard) {
+      detailCard.classList.remove('loading-fade');
+    }
   }
+}
+
+function highlightActiveCard(username) {
+  document.querySelectorAll('.profile-item-card').forEach(card => {
+    card.classList.remove('active');
+    if (card.dataset.username === username) {
+      card.classList.add('active');
+    }
+  });
 }
 
 // -------------------------------------------------------------
@@ -180,9 +268,13 @@ async function deleteProfile(username, e) {
   e.stopPropagation(); // prevent card selection trigger
   if (!confirm(`Are you sure you want to delete the stored analysis for "${username}"?`)) return;
 
+  const cacheKey = username.toLowerCase();
+  delete profileCache[cacheKey]; // Invalidate cache on delete
+
   try {
     const res = await fetch(`${API_BASE}/profiles/${username}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getAuthHeaders()
     });
 
     if (!res.ok) throw new Error('Deletion failed');
@@ -286,10 +378,26 @@ function updateCompareButton() {
 // -------------------------------------------------------------
 function displayDetails(data) {
   const p = data.profile;
+
+  // OPTIMIZATION: Avoid rebuilding charts & DOM if clicking the already active profile
+  if (activeProfile && activeProfile.username === p.username) {
+    return;
+  }
+
   activeProfile = p;
+
 
   detailPlaceholder.classList.add('hidden');
   detailContent.classList.remove('hidden');
+
+  const compareMeBtn = document.getElementById('compare-me-btn');
+  if (compareMeBtn) {
+    if (myUsername && myUsername !== p.username) {
+      compareMeBtn.classList.remove('hidden');
+    } else {
+      compareMeBtn.classList.add('hidden');
+    }
+  }
 
   // Basic info
   detailAvatar.src = p.avatar_url;
@@ -463,6 +571,23 @@ function renderScorecardDetails(p, repos) {
   scorecardDescription.textContent = desc;
 }
 
+async function fetchProfileDataForComparison(username) {
+  const cacheKey = username.toLowerCase();
+  const cached = profileCache[cacheKey];
+  const now = Date.now();
+  if (cached && (now - cached.timestamp < 900000)) {
+    return cached.data;
+  }
+  const res = await fetch(`${API_BASE}/profiles/${username}`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error(`Profile details fetch failed for ${username}`);
+  const data = await res.json();
+  profileCache[cacheKey] = {
+    data: data,
+    timestamp: Date.now()
+  };
+  return data;
+}
+
 // -------------------------------------------------------------
 // COMPARISON MODAL SHOWCASE (SIDE BY SIDE MATRIX)
 // -------------------------------------------------------------
@@ -472,18 +597,34 @@ async function showComparisonModal() {
     return;
   }
 
-  try {
-    const user1Res = await fetch(`${API_BASE}/profiles/${selectedForComparison[0]}`);
-    const user2Res = await fetch(`${API_BASE}/profiles/${selectedForComparison[1]}`);
+  // 1. Open the modal instantly!
+  comparisonModal.classList.remove('hidden');
 
-    const u1 = await user1Res.json();
-    const u2 = await user2Res.json();
+  // Render a clean glassmorphic loading spinner inside the comparison columns
+  compareCol1.innerHTML = `
+    <div class="comp-loader">
+      <div class="spinner"></div>
+      <p>Loading Radar Matrix...</p>
+    </div>
+  `;
+  compareCol2.innerHTML = `
+    <div class="comp-loader">
+      <div class="spinner"></div>
+      <p>Loading Radar Matrix...</p>
+    </div>
+  `;
+
+  try {
+    // 2. Fetch both profiles concurrently (using cached or network)
+    const [u1, u2] = await Promise.all([
+      fetchProfileDataForComparison(selectedForComparison[0]),
+      fetchProfileDataForComparison(selectedForComparison[1])
+    ]);
 
     renderComparisonColumn(compareCol1, u1);
     renderComparisonColumn(compareCol2, u2);
-
-    comparisonModal.classList.remove('hidden');
   } catch (err) {
+    comparisonModal.classList.add('hidden');
     alert('Error loading comparison matrices: ' + err.message);
   }
 }
@@ -733,3 +874,55 @@ function renderSynergyUsersList(users) {
     container.appendChild(item);
   });
 }
+
+async function initAuth() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+  if (code) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    try {
+      const res = await fetch(API_BASE + '/auth/github', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const data = await res.json();
+      if (data.access_token) {
+        localStorage.setItem('gitradar_github_token', data.access_token);
+      }
+    } catch (err) {
+      console.error('OAuth exchange failed', err);
+    }
+  }
+
+  const token = localStorage.getItem('gitradar_github_token');
+  if (token) {
+    try {
+      const res = await fetch('https://api.github.com/user', {
+        headers: { 'Authorization': 'token ' + token }
+      });
+      if (res.ok) {
+        const user = await res.json();
+        myUsername = user.login.toLowerCase();
+        myAvatar = user.avatar_url;
+        document.getElementById('login-btn').classList.add('hidden');
+        document.getElementById('user-profile-badge').classList.remove('hidden');
+        document.getElementById('logged-in-username').textContent = user.login;
+        document.getElementById('logged-in-avatar').src = user.avatar_url;
+      } else {
+        localStorage.removeItem('gitradar_github_token');
+      }
+    } catch (err) {
+      console.error('Failed to fetch logged in user', err);
+    }
+  }
+}
+
+function getAuthHeaders(headers = {}) {
+  const token = localStorage.getItem('gitradar_github_token');
+  if (token) {
+    headers['Authorization'] = 'Bearer ' + token;
+  }
+  return headers;
+}
+
