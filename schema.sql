@@ -3,7 +3,7 @@
 
 -- 1. PROFILES TABLE
 -- Stores the high-level analyzed developer information
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE IF NOT EXISTS rr_profiles (
   id INT NOT NULL AUTO_INCREMENT, -- or SERIAL in Postgres
   username VARCHAR(100) NOT NULL UNIQUE,
   name VARCHAR(150),
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- For PostgreSQL compatibility (run if using Neon/Postgres):
--- CREATE TABLE IF NOT EXISTS profiles (
+-- CREATE TABLE IF NOT EXISTS rr_profiles (
 --   id SERIAL PRIMARY KEY,
 --   username VARCHAR(100) NOT NULL UNIQUE,
 --   name VARCHAR(150),
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- 2. REPOSITORIES TABLE
 -- Stores top repositories for analyzed profiles
-CREATE TABLE IF NOT EXISTS repositories (
+CREATE TABLE IF NOT EXISTS rr_repositories (
   id INT NOT NULL AUTO_INCREMENT, -- or SERIAL in Postgres
   profile_id INT NOT NULL,
   repo_name VARCHAR(150) NOT NULL,
@@ -54,13 +54,13 @@ CREATE TABLE IF NOT EXISTS repositories (
   language VARCHAR(100),
   html_url TEXT,
   PRIMARY KEY (id),
-  FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+  FOREIGN KEY (profile_id) REFERENCES rr_profiles(id) ON DELETE CASCADE
 );
 
 -- For PostgreSQL compatibility (run if using Neon/Postgres):
--- CREATE TABLE IF NOT EXISTS repositories (
+-- CREATE TABLE IF NOT EXISTS rr_repositories (
 --   id SERIAL PRIMARY KEY,
---   profile_id INT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+--   profile_id INT NOT NULL REFERENCES rr_profiles(id) ON DELETE CASCADE,
 --   repo_name VARCHAR(150) NOT NULL,
 --   stars INT DEFAULT 0,
 --   forks INT DEFAULT 0,
@@ -70,20 +70,20 @@ CREATE TABLE IF NOT EXISTS repositories (
 
 -- 3. LANGUAGES TABLE
 -- Stores the computed language breakdown (in bytes)
-CREATE TABLE IF NOT EXISTS languages (
+CREATE TABLE IF NOT EXISTS rr_languages (
   id INT NOT NULL AUTO_INCREMENT, -- or SERIAL in Postgres
   profile_id INT NOT NULL,
   language VARCHAR(100) NOT NULL,
   bytes_count INT DEFAULT 0,
   percentage DECIMAL(5,2) DEFAULT 0.00,
   PRIMARY KEY (id),
-  FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+  FOREIGN KEY (profile_id) REFERENCES rr_profiles(id) ON DELETE CASCADE
 );
 
 -- For PostgreSQL compatibility (run if using Neon/Postgres):
--- CREATE TABLE IF NOT EXISTS languages (
+-- CREATE TABLE IF NOT EXISTS rr_languages (
 --   id SERIAL PRIMARY KEY,
---   profile_id INT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+--   profile_id INT NOT NULL REFERENCES rr_profiles(id) ON DELETE CASCADE,
 --   language VARCHAR(100) NOT NULL,
 --   bytes_count BIGINT DEFAULT 0,
 --   percentage DECIMAL(5,2) DEFAULT 0.00

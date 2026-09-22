@@ -56,7 +56,7 @@ async function initDatabase() {
     console.log(`🛠️ DB: Initializing schema for ${dialect.toUpperCase()}...`);
     if (isPostgres) {
       await pool.query(`
-        CREATE TABLE IF NOT EXISTS profiles (
+        CREATE TABLE IF NOT EXISTS rr_profiles (
           id SERIAL PRIMARY KEY,
           username VARCHAR(100) NOT NULL UNIQUE,
           name VARCHAR(150),
@@ -77,9 +77,9 @@ async function initDatabase() {
       `);
 
       await pool.query(`
-        CREATE TABLE IF NOT EXISTS repositories (
+        CREATE TABLE IF NOT EXISTS rr_repositories (
           id SERIAL PRIMARY KEY,
-          profile_id INT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+          profile_id INT NOT NULL REFERENCES rr_profiles(id) ON DELETE CASCADE,
           repo_name VARCHAR(150) NOT NULL,
           stars INT DEFAULT 0,
           forks INT DEFAULT 0,
@@ -89,9 +89,9 @@ async function initDatabase() {
       `);
 
       await pool.query(`
-        CREATE TABLE IF NOT EXISTS languages (
+        CREATE TABLE IF NOT EXISTS rr_languages (
           id SERIAL PRIMARY KEY,
-          profile_id INT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+          profile_id INT NOT NULL REFERENCES rr_profiles(id) ON DELETE CASCADE,
           language VARCHAR(100) NOT NULL,
           bytes_count BIGINT DEFAULT 0,
           percentage DECIMAL(5,2) DEFAULT 0.00
@@ -99,7 +99,7 @@ async function initDatabase() {
       `);
     } else {
       await pool.execute(`
-        CREATE TABLE IF NOT EXISTS profiles (
+        CREATE TABLE IF NOT EXISTS rr_profiles (
           id INT NOT NULL AUTO_INCREMENT,
           username VARCHAR(100) NOT NULL UNIQUE,
           name VARCHAR(150),
@@ -121,7 +121,7 @@ async function initDatabase() {
       `);
 
       await pool.execute(`
-        CREATE TABLE IF NOT EXISTS repositories (
+        CREATE TABLE IF NOT EXISTS rr_repositories (
           id INT NOT NULL AUTO_INCREMENT,
           profile_id INT NOT NULL,
           repo_name VARCHAR(150) NOT NULL,
@@ -130,19 +130,19 @@ async function initDatabase() {
           language VARCHAR(100),
           html_url TEXT,
           PRIMARY KEY (id),
-          FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+          FOREIGN KEY (profile_id) REFERENCES rr_profiles(id) ON DELETE CASCADE
         )
       `);
 
       await pool.execute(`
-        CREATE TABLE IF NOT EXISTS languages (
+        CREATE TABLE IF NOT EXISTS rr_languages (
           id INT NOT NULL AUTO_INCREMENT,
           profile_id INT NOT NULL,
           language VARCHAR(100) NOT NULL,
           bytes_count INT DEFAULT 0,
           percentage DECIMAL(5,2) DEFAULT 0.00,
           PRIMARY KEY (id),
-          FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+          FOREIGN KEY (profile_id) REFERENCES rr_profiles(id) ON DELETE CASCADE
         )
       `);
     }

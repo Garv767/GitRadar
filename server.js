@@ -75,13 +75,13 @@ async function calculateSynergy(profileId, username, githubConfig, skipNetwork =
   let synergyUsers = [];
   try {
     // 1. Fetch other profiles in the database
-    const otherProfiles = await db.query('SELECT * FROM profiles WHERE id != ?', [profileId]);
+    const otherProfiles = await db.query('SELECT * FROM rr_profiles WHERE id != ?', [profileId]);
     if (otherProfiles.length === 0) return [];
     
     // 2. Fetch active profile's repositories & languages
     const [myRepos, myLanguages] = await Promise.all([
-      db.query('SELECT repo_name, forks, stars FROM repositories WHERE profile_id = ?', [profileId]),
-      db.query('SELECT language FROM languages WHERE profile_id = ?', [profileId])
+      db.query('SELECT repo_name, forks, stars FROM rr_repositories WHERE profile_id = ?', [profileId]),
+      db.query('SELECT language FROM rr_languages WHERE profile_id = ?', [profileId])
     ]);
     
     const myRepoNames = myRepos.map(r => r.repo_name.toLowerCase());
@@ -113,8 +113,8 @@ async function calculateSynergy(profileId, username, githubConfig, skipNetwork =
     if (otherProfileIds.length > 0) {
       // Dialect-safe queries (Postgres/MySQL compatible)
       const placeHolders = otherProfileIds.map((_, i) => db.isPostgres ? `$${i+1}` : '?').join(',');
-      allRepos = await db.query(`SELECT profile_id, repo_name, forks, stars FROM repositories WHERE profile_id IN (${placeHolders})`, otherProfileIds);
-      allLanguages = await db.query(`SELECT profile_id, language FROM languages WHERE profile_id IN (${placeHolders})`, otherProfileIds);
+      allRepos = await db.query(`SELECT profile_id, repo_name, forks, stars FROM rr_repositories WHERE profile_id IN (${placeHolders})`, otherProfileIds);
+      allLanguages = await db.query(`SELECT profile_id, language FROM rr_languages WHERE profile_id IN (${placeHolders})`, otherProfileIds);
     }
 
     const reposByProfile = {};
@@ -265,20 +265,20 @@ app.post('/api/analyze/:username', async (req, res) => {
 
     // 3. Database Sync Transactional Logic
     // Clean up existing entry if it exists (cascade will handle child tables)
-    await db.query('DELETE FROM profiles WHERE username = ?', [username]);
+    await db.query('DELETE FROM rr_profiles WHERE username = ?', [username]);
 
     // Insert new profile
     let insertProfileSql;
     if (db.isPostgres) {
       insertProfileSql = `
-        INSERT INTO profiles 
+        INSERT INTO rr_profiles 
         (username, name, avatar_url, bio, public_repos, public_gists, followers, following, location, company, blog, github_created_at, developer_score, developer_grade)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING id
       `;
     } else {
       insertProfileSql = `
-        INSERT INTO profiles 
+        INSERT INTO rr_profiles 
         (username, name, avatar_url, bio, public_repos, public_gists, followers, following, location, company, blog, github_created_at, developer_score, developer_grade)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
@@ -309,14 +309,14 @@ app.post('/api/analyze/:username', async (req, res) => {
       const res = await db.query(insertProfileSql, profileParams);
       // In mysql2, res can have insertId depending on pool structure.
       // Let's query the ID to make it 100% dialect safe!
-      const checkProfile = await db.query('SELECT id FROM profiles WHERE username = ?', [username]);
+      const checkProfile = await db.query('SELECT id FROM rr_profiles WHERE username = ?', [username]);
       profileId = checkProfile[0].id;
     }
 
     // Insert Top Repositories
     for (const repo of topRepos) {
       await db.query(
-        'INSERT INTO repositories (profile_id, repo_name, stars, forks, language, html_url) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO rr_repositories (profile_id, repo_name, stars, forks, language, html_url) VALUES (?, ?, ?, ?, ?, ?)',
         [profileId, repo.name, repo.stars, repo.forks, repo.language, repo.html_url]
       );
     }
@@ -324,7 +324,7 @@ app.post('/api/analyze/:username', async (req, res) => {
     // Insert Language breakdown
     for (const lang of computedLanguages) {
       await db.query(
-        'INSERT INTO languages (profile_id, language, bytes_count, percentage) VALUES (?, ?, ?, ?)',
+        'INSERT INTO rr_languages (profile_id, language, bytes_count, percentage) VALUES (?, ?, ?, ?)',
         [profileId, lang.language, lang.bytes_count, lang.percentage]
       );
     }
@@ -367,7 +367,7 @@ app.post('/api/analyze/:username', async (req, res) => {
 // ENDPOINT: Get All Analyzed Profiles
 app.get('/api/profiles', async (req, res) => {
   try {
-    const profiles = await db.query('SELECT * FROM profiles ORDER BY developer_score DESC');
+    const profiles = await db.query('SELECT * FROM rr_profiles ORDER BY developer_score DESC');
     res.json(profiles);
   } catch (error) {
     console.error('❌ API: Error fetching profiles:', error.message);
@@ -381,14 +381,14 @@ app.get('/api/profiles/:username', async (req, res) => {
   const githubConfig = getGithubConfig(req);
 
   try {
-    const profileRows = await db.query('SELECT * FROM profiles WHERE username = ?', [username]);
+    const profileRows = await db.query('SELECT * FROM rr_profiles WHERE username = ?', [username]);
     if (profileRows.length === 0) {
       return res.status(404).json({ error: `Profile "${username}" not analyzed yet.` });
     }
 
     const profile = profileRows[0];
-    const repositories = await db.query('SELECT * FROM repositories WHERE profile_id = ? ORDER BY stars DESC', [profile.id]);
-    const languages = await db.query('SELECT * FROM languages WHERE profile_id = ? ORDER BY percentage DESC', [profile.id]);
+    const repositories = await db.query('SELECT * FROM rr_repositories WHERE profile_id = ? ORDER BY stars DESC', [profile.id]);
+    const languages = await db.query('SELECT * FROM rr_languages WHERE profile_id = ? ORDER BY percentage DESC', [profile.id]);
 
     // Calculate dynamic synergy scores — includes follower/following network check
     const synergyUsers = await calculateSynergy(profile.id, username, githubConfig);
@@ -410,12 +410,12 @@ app.delete('/api/profiles/:username', async (req, res) => {
   const username = req.params.username.trim().toLowerCase();
 
   try {
-    const profileRows = await db.query('SELECT * FROM profiles WHERE username = ?', [username]);
+    const profileRows = await db.query('SELECT * FROM rr_profiles WHERE username = ?', [username]);
     if (profileRows.length === 0) {
       return res.status(404).json({ error: `Profile "${username}" not found.` });
     }
 
-    await db.query('DELETE FROM profiles WHERE username = ?', [username]);
+    await db.query('DELETE FROM rr_profiles WHERE username = ?', [username]);
     res.json({ message: `Successfully deleted profile analysis for ${username}.` });
   } catch (error) {
     console.error(`❌ API: Error deleting profile for ${username}:`, error.message);
